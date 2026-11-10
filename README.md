@@ -23,6 +23,8 @@ O [workflow Flutter quality](.github/workflows/flutter.yml) executa `flutter ana
 
 A alteração **não apaga dados armazenados por versões anteriores**, nem impede que snapshots de arquivos guardem conteúdo sensível no banco. Quando habilitado, o histórico de comandos e saídas não é criptografado pela aplicação e pode conter senhas, tokens, caminhos privados e dados de trabalho. Não trate o banco como cofre de segredos. A saída do terminal continua visível na sessão ativa mesmo com a gravação desabilitada.
 
+**Limpeza explícita:** a camada de persistência oferece `DatabaseService.clearTerminalHistoryForWorkspace(workspaceId)` para remover comandos e saídas previamente gravados de um workspace específico, sem tocar nos registros de outros workspaces, snapshots ou baselines. **Não há botão de interface ou limpeza automática para essa operação**; ela só é executada quando chamada pelo código. Isso não é uma eliminação forense: cópias de segurança, WAL e armazenamento subjacente podem reter vestígios dos dados.
+
 **Rollback:** a reversão escreve alterações em arquivos locais. Faça backup ou use Git antes de reverter; os testes cobrem cenários específicos, não todas as condições de concorrência, conflitos e arquivos binários.
 
 **Distribuição:** existem scripts de empacotamento para os três sistemas operacionais, mas sua presença não comprova compatibilidade ou instalação validada em cada plataforma. Os arquivos existentes em `dist/` são artefatos históricos, não reproduzidos ou assinados pela pipeline de qualidade.
