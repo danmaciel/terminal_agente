@@ -4,7 +4,7 @@ import 'package:terminal_agente/services/database_service.dart';
 
 void main() {
   test('DatabaseService initializes in-memory, deduplicates CAS blobs, and stores snapshots & logs', () async {
-    final db = DatabaseService();
+    final db = DatabaseService(recordTerminalHistory: true);
     await db.init(inMemory: true);
 
     // 1. Workspace upsert
@@ -65,4 +65,28 @@ void main() {
 
     db.dispose();
   });
+  test('Terminal history stays disabled by default while sessions still work', () async {
+    final db = DatabaseService();
+    await db.init(inMemory: true);
+    try {
+      final ws = db.upsertWorkspace('/tmp/private_terminal', isGitRepo: false);
+      final session = db.createTerminalSession(
+        workspaceId: ws.id,
+        title: 'private',
+        shellExecutable: '/bin/sh',
+      );
+
+      db.recordCommand(session.id, 'export DEMO_SECRET=example');
+      db.appendTerminalLog(session.id, 'DEMO_SECRET=example\\n');
+
+      expect(db.getCommandHistory(ws.id), isEmpty);
+      expect(db.getSessionLogs(session.id), isEmpty);
+
+      // This does not delete existing history already stored on disk.
+      // Explicit opt-in is covered by the storage test above.
+    } finally {
+      db.dispose();
+    }
+  });
+
 }
