@@ -95,6 +95,75 @@ line 6''';
     }
   });
 
+  test('Rejects restoring a snapshot from another workspace', () async {
+    final db = DatabaseService();
+    await db.init(inMemory: true);
+    final tracker = HybridChangeTracker(
+      databaseService: db,
+      diffEngine: DiffEngineService(),
+      enableWatcherAndGitCli: false,
+    );
+    final first = await Directory.systemTemp.createTemp('snapshot_first_');
+    final second = await Directory.systemTemp.createTemp('snapshot_second_');
+    try {
+      final sourceFile = File(p.join(first.path, 'sample.txt'));
+      await sourceFile.writeAsString('source');
+      final ws = await tracker.openWorkspace(first.path);
+      await sourceFile.writeAsString('modified');
+      await tracker.refreshChanges(recordAutoSnapshot: true);
+      final snapshotId = db.getSnapshotsForWorkspace(ws.id).single.id;
+
+      final destination = File(p.join(second.path, 'sample.txt'));
+      await destination.writeAsString('destination');
+      await tracker.openWorkspace(second.path);
+      await expectLater(
+        tracker.restoreSnapshot(snapshotId),
+        throwsA(isA<StateError>()),
+      );
+      expect(await destination.readAsString(), 'destination');
+    } finally {
+      await tracker.dispose();
+      db.dispose();
+      await first.delete(recursive: true);
+      await second.delete(recursive: true);
+    }
+  });
+
+  test('Rejects traversal and symlinks when saving an edited file', () async {
+    final db = DatabaseService();
+    await db.init(inMemory: true);
+    final tracker = HybridChangeTracker(
+      databaseService: db,
+      diffEngine: DiffEngineService(),
+      enableWatcherAndGitCli: false,
+    );
+    final dir = await Directory.systemTemp.createTemp('safe_workspace_');
+    final outside = await Directory.systemTemp.createTemp('outside_workspace_');
+    try {
+      await tracker.openWorkspace(dir.path);
+      final external = File(p.join(outside.path, 'protected.txt'));
+      await external.writeAsString('protected');
+      await expectLater(
+        tracker.saveEditedFile(p.join('..', p.basename(outside.path), 'protected.txt'), 'bad'),
+        throwsA(isA<StateError>()),
+      );
+      expect(await external.readAsString(), 'protected');
+
+      final alias = Link(p.join(dir.path, 'linked.txt'));
+      await alias.create(external.path);
+      await expectLater(
+        tracker.saveEditedFile('linked.txt', 'bad'),
+        throwsA(isA<StateError>()),
+      );
+      expect(await external.readAsString(), 'protected');
+    } finally {
+      await tracker.dispose();
+      db.dispose();
+      await dir.delete(recursive: true);
+      await outside.delete(recursive: true);
+    }
+  });
+
   test('HybridChangeTracker tracks changes, creates snapshots, and performs hunk/file rollback', () async {
     final db = DatabaseService();
     await db.init(inMemory: true);
