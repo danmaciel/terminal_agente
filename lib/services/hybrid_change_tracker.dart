@@ -44,6 +44,13 @@ class HybridChangeTracker {
     'Pods',
   };
 
+  // Prevent common secrets from being copied into plaintext SQLite snapshots.
+  static const Set<String> _sensitiveNames = {
+    '.npmrc', '.pypirc', '.netrc', '.pgpass', 'credentials',
+    'id_rsa', 'id_dsa', 'id_ecdsa', 'id_ed25519',
+    'google-services.json', 'googleservice-info.plist',
+  };
+
   static const Set<String> _ignoredExtensions = {
     '.png',
     '.jpg',
@@ -69,6 +76,12 @@ class HybridChangeTracker {
     '.sqlite-wal',
     '.sqlite-shm',
     '.db',
+    '.pem',
+    '.key',
+    '.p12',
+    '.pfx',
+    '.keystore',
+    '.jks',
     '.appimage',
     '.ttf',
     '.otf',
@@ -573,6 +586,11 @@ class HybridChangeTracker {
   }
 
   bool _shouldIgnorePath(String relativePath) {
+    final fileName = p.basename(relativePath).toLowerCase();
+    if (fileName == '.env' || fileName.startsWith('.env.') ||
+        _sensitiveNames.contains(fileName)) {
+      return true;
+    }
     final parts = p.split(relativePath);
     for (final part in parts) {
       if (_ignoredSegments.contains(part)) return true;
