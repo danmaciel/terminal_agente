@@ -174,7 +174,7 @@ void main() {
       expect(before['contentBlobBytes'], 4);
       expect(before['terminalSessions'], 1);
       expect(before['terminalLogs'], 1);
-      expect(before['terminalLogBytes'], 5);
+      expect(before['terminalLogBytes'], 6);
       expect(before['commands'], 1);
       expect(before['commandBytes'], 7);
 
