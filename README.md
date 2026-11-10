@@ -13,6 +13,36 @@ Aplicação Desktop Multiplataforma (**Linux, Windows e macOS**) construída em 
 
 ---
 
+## Visão técnica da arquitetura
+
+Este é um projeto pessoal de aplicação desktop, organizado em componentes de interface, serviços de acompanhamento de arquivos, sessões de terminal e persistência local.
+
+```mermaid
+flowchart TD
+    UI["Interface Flutter Desktop"] --> TM["TerminalTabsManager"]
+    UI --> TR["HybridChangeTracker"]
+    UI --> DB["DatabaseService"]
+    TM --> PTY["Sessões PTY locais"]
+    TM --> DB
+    TR --> FS["Arquivos do workspace"]
+    TR --> GIT["Git CLI e watcher"]
+    TR --> DIFF["DiffEngineService"]
+    TR --> DB
+    DB --> SQL["SQLite: baselines, snapshots e blobs CAS"]
+```
+
+**Responsabilidades principais**
+
+- `lib/main.dart` e `lib/widgets/`: composição da interface e integração das ações de edição, comparação e restauração.
+- `terminal_session_controller.dart`: gerenciamento de abas e sessões de terminal; o conteúdo de comandos e saídas só é persistido quando a gravação é habilitada explicitamente na compilação.
+- `hybrid_change_tracker.dart`: leitura de arquivos de texto elegíveis no workspace, acompanhamento de mudanças, baselines, snapshots e operações de restauração.
+- `diff_engine_service.dart`: cálculo e manipulação de diferenças para comparação e reversão de trechos.
+- `database_service.dart`: armazenamento local em SQLite, deduplicação por hash SHA-256 de conteúdo textual, consultas e estatísticas de armazenamento.
+
+**Decisões e limites:** os snapshots e baselines locais não são um substituto para Git ou backup. Arquivos comuns podem conter segredos que não são reconhecidos pelas exclusões preventivas; o banco não deve ser considerado um armazenamento criptografado. As rotinas de restauração possuem validações de workspace e caminhos, mas não garantem proteção contra todas as condições de corrida do sistema de arquivos. A pipeline executa análise estática e testes Flutter, sem validar os pacotes distribuíveis em cada sistema operacional.
+
+---
+
 ## Implementação e evidências
 
 Os componentes principais estão em `lib/services/` (persistência SQLite, diff, monitoramento de arquivos e sessões de terminal) e `lib/widgets/` (interface). Há testes de persistência, comparação e rollback, sessões e widgets em `test/`.
