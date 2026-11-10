@@ -365,6 +365,27 @@ class HybridChangeTracker {
   // Granular Rollback: By File, By Hunk, or By Timeline Snapshot
   // ---------------------------------------------------------------------------
 
+  /// Resolve writable paths without allowing traversal or symlink redirection.
+  /// Avoid operating on any symlink component, including the final file.
+  File _safeWorkspaceFile(WorkspaceModel workspace, String relativePath) {
+    if (relativePath.isEmpty || p.isAbsolute(relativePath)) {
+      throw ArgumentError.value(relativePath, 'relativePath', 'Invalid relative path');
+    }
+    final root = p.normalize(p.absolute(workspace.rootPath));
+    final target = p.normalize(p.join(root, relativePath));
+    if (!p.isWithin(root, target) || _shouldIgnorePath(relativePath)) {
+      throw StateError('Path is outside the allowed workspace files');
+    }
+    var current = root;
+    for (final part in p.split(p.relative(target, from: root))) {
+      current = p.join(current, part);
+      if (Link(current).existsSync()) {
+        throw StateError('Symbolic links cannot be modified by rollback');
+      }
+    }
+    return File(target);
+  }
+
   /// Reverts an entire file back to its baseline ("como estava").
   Future<void> revertFile(String relativePath) async {
     final workspace = _activeWorkspace;
@@ -375,7 +396,7 @@ class HybridChangeTracker {
         .firstOrNull;
     if (change == null) return;
 
-    final targetFile = File(p.join(workspace.rootPath, relativePath));
+    final targetFile = _safeWorkspaceFile(workspace, relativePath);
     _suppressWatcherEvents = true;
     try {
       if (change.status == FileChangeStatus.added ||
@@ -409,7 +430,7 @@ class HybridChangeTracker {
     if (change == null) return;
 
     final patchedContent = _diffEngine.revertHunk(change.afterContent, hunk);
-    final targetFile = File(p.join(workspace.rootPath, relativePath));
+    final targetFile = _safeWorkspaceFile(workspace, relativePath);
 
     _suppressWatcherEvents = true;
     try {
@@ -434,7 +455,7 @@ class HybridChangeTracker {
     final workspace = _activeWorkspace;
     if (workspace == null) return;
 
-    final targetFile = File(p.join(workspace.rootPath, relativePath));
+    final targetFile = _safeWorkspaceFile(workspace, relativePath);
     _suppressWatcherEvents = true;
     try {
       targetFile.parent.createSync(recursive: true);
@@ -485,11 +506,18 @@ class HybridChangeTracker {
     final workspace = _activeWorkspace;
     if (workspace == null) return;
 
+    if (!_db.snapshotBelongsToWorkspace(snapshotId, workspace.id)) {
+      throw StateError('Snapshot does not belong to the active workspace');
+    }
     final entries = _db.getSnapshotFiles(snapshotId);
+    // Validate all paths before modifying any files.
+    for (final entry in entries) {
+      _safeWorkspaceFile(workspace, entry.relativePath);
+    }
     _suppressWatcherEvents = true;
     try {
       for (final entry in entries) {
-        final targetFile = File(p.join(workspace.rootPath, entry.relativePath));
+        final targetFile = _safeWorkspaceFile(workspace, entry.relativePath);
         final contentToWrite =
             restoreBeforeState ? entry.beforeContent : entry.afterContent;
 
