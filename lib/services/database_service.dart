@@ -504,6 +504,40 @@ class DatabaseService {
     return rows.map((r) => r['command_line'] as String).toList();
   }
 
+  /// Removes persisted command history and terminal output for one workspace.
+  ///
+  /// This is an explicit operation: it is never invoked on startup or
+  /// automatically by a retention policy. It does not remove session metadata,
+  /// snapshots, file baselines, or content blobs. Deleted SQLite pages may
+  /// remain recoverable from backups, WAL files, or disk storage.
+  void clearTerminalHistoryForWorkspace(int workspaceId) {
+    _database.execute('BEGIN IMMEDIATE TRANSACTION;');
+    try {
+      _database.execute(
+        '''
+        DELETE FROM terminal_logs
+        WHERE session_id IN (
+          SELECT id FROM terminal_sessions WHERE workspace_id = ?
+        );
+        ''',
+        [workspaceId],
+      );
+      _database.execute(
+        '''
+        DELETE FROM command_history
+        WHERE session_id IN (
+          SELECT id FROM terminal_sessions WHERE workspace_id = ?
+        );
+        ''',
+        [workspaceId],
+      );
+      _database.execute('COMMIT;');
+    } catch (_) {
+      _database.execute('ROLLBACK;');
+      rethrow;
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Quick Snippets & Settings
   // ---------------------------------------------------------------------------

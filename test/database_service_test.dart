@@ -89,4 +89,62 @@ void main() {
     }
   });
 
+  test('Clearing terminal history affects only the selected workspace', () async {
+    final db = DatabaseService(recordTerminalHistory: true);
+    await db.init(inMemory: true);
+    try {
+      final first = db.upsertWorkspace('/tmp/history_one', isGitRepo: false);
+      final second = db.upsertWorkspace('/tmp/history_two', isGitRepo: false);
+      final firstSession = db.createTerminalSession(
+        workspaceId: first.id,
+        title: 'first',
+        shellExecutable: '/bin/sh',
+      );
+      final secondSession = db.createTerminalSession(
+        workspaceId: second.id,
+        title: 'second',
+        shellExecutable: '/bin/sh',
+      );
+
+      db.recordCommand(firstSession.id, 'echo first');
+      db.appendTerminalLog(firstSession.id, 'first output');
+      db.recordCommand(secondSession.id, 'echo second');
+      db.appendTerminalLog(secondSession.id, 'second output');
+
+      db.saveFileBaseline(first.id, 'config.txt', 'keep baseline');
+      final snapshot = db.createSnapshot(
+        workspaceId: first.id,
+        label: 'keep snapshot',
+        triggerType: 'manual',
+        changes: [
+          TrackedFileChange(
+            relativePath: 'config.txt',
+            status: FileChangeStatus.modified,
+            beforeContent: 'old',
+            afterContent: 'new',
+            addedLines: 1,
+            removedLines: 1,
+            updatedAt: DateTime.now(),
+          ),
+        ],
+      );
+
+      db.clearTerminalHistoryForWorkspace(first.id);
+
+      expect(db.getCommandHistory(first.id), isEmpty);
+      expect(db.getSessionLogs(firstSession.id), isEmpty);
+      expect(db.getCommandHistory(second.id), ['echo second']);
+      expect(db.getSessionLogs(secondSession.id), ['second output']);
+      expect(db.getFileBaselineContent(first.id, 'config.txt'), 'keep baseline');
+      expect(db.getSnapshotFiles(snapshot.id), hasLength(1));
+
+      // Clearing again is safe and does not affect the other workspace.
+      db.clearTerminalHistoryForWorkspace(first.id);
+      expect(db.getCommandHistory(second.id), ['echo second']);
+      expect(db.getSessionLogs(secondSession.id), ['second output']);
+    } finally {
+      db.dispose();
+    }
+  });
+
 }
