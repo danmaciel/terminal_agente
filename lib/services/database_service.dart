@@ -18,7 +18,10 @@ class DatabaseService {
   // Existing records are retained; this only controls future writes.
   final bool recordTerminalHistory;
 
-  DatabaseService({this.recordTerminalHistory = false});
+  DatabaseService({
+    this.recordTerminalHistory =
+        const bool.fromEnvironment('TERMINAL_AGENTE_RECORD_HISTORY'),
+  });
 
   Database? _db;
   String? _dbPath;
