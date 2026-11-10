@@ -5,6 +5,9 @@ Set-Location $ProjectRoot
 
 Write-Host "==> [1/3] Compilando Flutter Windows Release..."
 flutter build windows --release
+if ($LASTEXITCODE -ne 0) {
+    throw "Flutter build Windows falhou com código $LASTEXITCODE"
+}
 
 $ReleaseDir = Join-Path $ProjectRoot "build\windows\x64\runner\Release"
 # Verify expected Flutter bundle files before creating any archive.
