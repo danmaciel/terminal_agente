@@ -236,6 +236,27 @@ class DatabaseService {
     return rows.first['content_text'] as String;
   }
 
+  /// Deletes only content blobs with no baseline or snapshot references.
+  ///
+  /// This does not delete snapshots or baselines, including those in other
+  /// workspaces. Run explicitly after reviewing local data retention needs.
+  /// Deleting rows does not securely erase data from SQLite files or backups.
+  int pruneUnreferencedContentBlobs() {
+    _database.execute('''
+      DELETE FROM content_blobs
+      WHERE NOT EXISTS (
+        SELECT 1 FROM file_baselines
+        WHERE file_baselines.baseline_hash = content_blobs.sha256_hash
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM snapshot_files
+        WHERE snapshot_files.before_hash = content_blobs.sha256_hash
+           OR snapshot_files.after_hash = content_blobs.sha256_hash
+      );
+    ''');
+    return _database.updatedRows;
+  }
+
   // ---------------------------------------------------------------------------
   // Workspaces
   // ---------------------------------------------------------------------------
