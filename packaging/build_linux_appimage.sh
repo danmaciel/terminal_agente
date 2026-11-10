@@ -9,6 +9,11 @@ echo "==> [1/4] Compilando Flutter Linux Release..."
 flutter build linux --release
 
 BUNDLE_DIR="$PROJECT_ROOT/build/linux/x64/release/bundle"
+# Fail before packaging if the Flutter build is incomplete.
+[[ -f "$BUNDLE_DIR/terminal_agente" ]] || { echo "Erro: executável Linux ausente" >&2; exit 1; }
+[[ -d "$BUNDLE_DIR/data/flutter_assets" ]] || { echo "Erro: assets Flutter ausentes" >&2; exit 1; }
+[[ -d "$BUNDLE_DIR/lib" ]] || { echo "Erro: bibliotecas Linux ausentes" >&2; exit 1; }
+
 APPDIR="$PROJECT_ROOT/build/AppDir"
 DIST_DIR="$PROJECT_ROOT/dist"
 
@@ -52,11 +57,13 @@ EOF
 
 echo "==> [3/4] Gerando pacote portátil autoexecutável (.tar.gz)..."
 tar -czf "$DIST_DIR/TerminalAgente-linux-x86_64-portable.tar.gz" -C "$PROJECT_ROOT/build" AppDir
+[[ -s "$DIST_DIR/TerminalAgente-linux-x86_64-portable.tar.gz" ]] || { echo "Erro: pacote tar.gz vazio ou ausente" >&2; exit 1; }
 echo "    Criado: $DIST_DIR/TerminalAgente-linux-x86_64-portable.tar.gz"
 
 echo "==> [4/4] Gerando executável único standalone (.AppImage / .run)..."
 if command -v appimagetool >/dev/null 2>&1; then
   ARCH=x86_64 appimagetool "$APPDIR" "$DIST_DIR/TerminalAgente-x86_64.AppImage"
+  [[ -s "$DIST_DIR/TerminalAgente-x86_64.AppImage" ]] || { echo "Erro: AppImage vazio ou ausente" >&2; exit 1; }
   chmod +x "$DIST_DIR/TerminalAgente-x86_64.AppImage"
   echo "    Sucesso! AppImage gerado em: $DIST_DIR/TerminalAgente-x86_64.AppImage"
 fi
@@ -74,6 +81,7 @@ exec "$CACHE_DIR/AppDir/AppRun" "$@"
 __ARCHIVE_BELOW__
 LAUNCHER_EOF
 cat "$DIST_DIR/TerminalAgente-linux-x86_64-portable.tar.gz" >> "$SINGLE_BIN"
+[[ -s "$SINGLE_BIN" ]] || { echo "Erro: executável .run vazio ou ausente" >&2; exit 1; }
 chmod +x "$SINGLE_BIN"
 echo "    Criado executável único standalone: $SINGLE_BIN"
 echo "    Executável direto do bundle:        $BUNDLE_DIR/terminal_agente"

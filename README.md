@@ -33,7 +33,7 @@ A alteração **não apaga dados armazenados por versões anteriores**, nem impe
 
 **Rollback:** a reversão escreve alterações em arquivos locais. Faça backup ou use Git antes de reverter; os testes cobrem cenários específicos, não todas as condições de concorrência, conflitos e arquivos binários.
 
-**Distribuição:** existem scripts de empacotamento para Linux, Windows e macOS, mas sua presença não comprova compatibilidade ou instalação validada em cada plataforma. A pasta `dist/` é gerada localmente e ignorada pelo Git; a pipeline atual não compila nem publica pacotes de distribuição. Pacotes Linux previamente commitados continuam acessíveis nos commits históricos, mas não devem ser tratados como builds verificados, assinados ou prontos para distribuição.
+**Distribuição:** existem scripts de empacotamento para Linux, Windows e macOS, mas sua presença não comprova compatibilidade ou instalação validada em cada plataforma. Os scripts verificam a existência de componentes essenciais do build e se os arquivos finais foram gerados com conteúdo; isso não substitui teste de instalação, execução, assinatura ou verificação de integridade criptográfica. A pasta `dist/` é gerada localmente e ignorada pelo Git; a pipeline atual não compila nem publica pacotes de distribuição. Pacotes Linux previamente commitados continuam acessíveis nos commits históricos, mas não devem ser tratados como builds verificados, assinados ou prontos para distribuição.
 
 ---
 
