@@ -9,7 +9,8 @@ void main() {
   testWidgets(
       'TerminalTabsManager manages multiple tabs, logs commands to SQLite, and renders TerminalPanelWidget',
       (WidgetTester tester) async {
-    final db = DatabaseService();
+    // This test explicitly opts in to persisted command history.
+    final db = DatabaseService(recordTerminalHistory: true);
     await db.init(inMemory: true);
     final ws = db.upsertWorkspace('/tmp/term_ws', isGitRepo: false);
 

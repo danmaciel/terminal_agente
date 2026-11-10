@@ -19,7 +19,9 @@ Os componentes principais estão em `lib/services/` (persistência SQLite, diff,
 
 O [workflow Flutter quality](.github/workflows/flutter.yml) executa `flutter analyze` e `flutter test` em pull requests e na branch principal. Esses testes não equivalem à validação completa da interface desktop, dos empacotadores ou do funcionamento em Linux, Windows e macOS.
 
-**Privacidade e operação local:** o aplicativo mantém comandos, saída de terminal e snapshots de arquivos em um banco SQLite local, sem criptografia própria ou mecanismo de expurgo automático demonstrado. Esses conteúdos podem incluir senhas, tokens, caminhos privados e dados de trabalho. Use apenas com projetos e comandos cujos dados possam ser armazenados localmente; não trate o histórico como cofre de segredos nem utilize a aplicação para executar comandos sensíveis sem avaliar esse risco. O terminal executa comandos no ambiente do usuário.
+**Privacidade e operação local:** a gravação de novos comandos e da saída do terminal no SQLite está **desativada por padrão**. A sessão de terminal continua funcionando, mas o histórico salvo de novos comandos não será preenchido. Para permitir esse armazenamento conscientemente ao executar em desenvolvimento, use `flutter run -d linux --dart-define=TERMINAL_AGENTE_RECORD_HISTORY=true` (ou ajuste a plataforma). Ao empacotar, a opção deve ser definida explicitamente no build. O valor é definido no momento da compilação, não é uma preferência editável na interface.
+
+A alteração **não apaga dados armazenados por versões anteriores**, nem impede que snapshots de arquivos guardem conteúdo sensível no banco. Quando habilitado, o histórico de comandos e saídas não é criptografado pela aplicação e pode conter senhas, tokens, caminhos privados e dados de trabalho. Não trate o banco como cofre de segredos. A saída do terminal continua visível na sessão ativa mesmo com a gravação desabilitada.
 
 **Rollback:** a reversão escreve alterações em arquivos locais. Faça backup ou use Git antes de reverter; os testes cobrem cenários específicos, não todas as condições de concorrência, conflitos e arquivos binários.
 

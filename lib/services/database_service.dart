@@ -14,6 +14,15 @@ final databaseServiceProvider = Provider<DatabaseService>((ref) {
 });
 
 class DatabaseService {
+  // Terminal history is opt-in: commands and PTY output may contain secrets.
+  // Existing records are retained; this only controls future writes.
+  final bool recordTerminalHistory;
+
+  DatabaseService({
+    this.recordTerminalHistory =
+        const bool.fromEnvironment('TERMINAL_AGENTE_RECORD_HISTORY'),
+  });
+
   Database? _db;
   String? _dbPath;
 
@@ -455,7 +464,7 @@ class DatabaseService {
   }
 
   void appendTerminalLog(int sessionId, String outputChunk) {
-    if (outputChunk.isEmpty) return;
+    if (!recordTerminalHistory || outputChunk.isEmpty) return;
     _database.execute(
       'INSERT INTO terminal_logs (session_id, output_chunk, logged_at) VALUES (?, ?, ?);',
       [sessionId, outputChunk, DateTime.now().toIso8601String()],
@@ -471,6 +480,7 @@ class DatabaseService {
   }
 
   void recordCommand(int sessionId, String commandLine) {
+    if (!recordTerminalHistory) return;
     final trimmed = commandLine.trim();
     if (trimmed.isEmpty) return;
     _database.execute(
