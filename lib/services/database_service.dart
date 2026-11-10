@@ -437,6 +437,15 @@ class DatabaseService {
     }).toList();
   }
 
+  /// Verifies snapshot ownership before any restore operation.
+  bool snapshotBelongsToWorkspace(int snapshotId, int workspaceId) {
+    final rows = _database.select(
+      'SELECT 1 FROM snapshots WHERE id = ? AND workspace_id = ? LIMIT 1;',
+      [snapshotId, workspaceId],
+    );
+    return rows.isNotEmpty;
+  }
+
   List<SnapshotFileEntry> getSnapshotFiles(int snapshotId) {
     final rows = _database.select(
       'SELECT * FROM snapshot_files WHERE snapshot_id = ? ORDER BY relative_path ASC;',
