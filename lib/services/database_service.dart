@@ -207,6 +207,34 @@ class DatabaseService {
     stmt.close();
   }
 
+  /// Read-only counts and logical text payload sizes in the local SQLite DB.
+  /// These bytes are not the database file size: SQLite overhead, WAL, and
+  /// filesystem allocation are not included.
+  Map<String, int> getStorageStatistics() {
+    int scalar(String query) =>
+        _database.select(query).first.values.first as int;
+
+    return {
+      'workspaces': scalar('SELECT COUNT(*) FROM workspaces;'),
+      'snapshots': scalar('SELECT COUNT(*) FROM snapshots;'),
+      'snapshotFiles': scalar('SELECT COUNT(*) FROM snapshot_files;'),
+      'fileBaselines': scalar('SELECT COUNT(*) FROM file_baselines;'),
+      'contentBlobs': scalar('SELECT COUNT(*) FROM content_blobs;'),
+      'contentBlobBytes': scalar(
+        'SELECT COALESCE(SUM(byte_size), 0) FROM content_blobs;',
+      ),
+      'terminalSessions': scalar('SELECT COUNT(*) FROM terminal_sessions;'),
+      'terminalLogs': scalar('SELECT COUNT(*) FROM terminal_logs;'),
+      'terminalLogBytes': scalar(
+        'SELECT COALESCE(SUM(LENGTH(CAST(output_chunk AS BLOB))), 0) FROM terminal_logs;',
+      ),
+      'commands': scalar('SELECT COUNT(*) FROM command_history;'),
+      'commandBytes': scalar(
+        'SELECT COALESCE(SUM(LENGTH(CAST(command_line AS BLOB))), 0) FROM command_history;',
+      ),
+    };
+  }
+
   // ---------------------------------------------------------------------------
   // Content-Addressable Storage (CAS) Blobs
   // ---------------------------------------------------------------------------

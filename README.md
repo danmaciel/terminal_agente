@@ -29,6 +29,8 @@ A alteração **não apaga dados armazenados por versões anteriores**, nem impe
 
 **Conteúdo CAS sem referências:** a camada SQLite também oferece `DatabaseService.pruneUnreferencedContentBlobs()` para remover, somente quando chamada explicitamente pelo código, blobs que não sejam usados por nenhum snapshot ou baseline de qualquer workspace. Isso **não** implementa uma política de retenção de snapshots, limpeza automática, interface de exclusão ou apagamento seguro de dados em disco, backups e WAL.
 
+**Diagnóstico de armazenamento (somente leitura):** `DatabaseService.getStorageStatistics()` fornece contagens de workspaces, snapshots, arquivos de snapshot, baselines, blobs, sessões, logs e comandos, além dos bytes lógicos de conteúdo de blobs, logs e comandos. Os números não representam o espaço físico do arquivo SQLite, WAL ou backups. A função não está exposta na interface e não implementa exclusão ou retenção automática.
+
 **Rollback:** a reversão escreve alterações em arquivos locais. Faça backup ou use Git antes de reverter; os testes cobrem cenários específicos, não todas as condições de concorrência, conflitos e arquivos binários.
 
 **Distribuição:** existem scripts de empacotamento para Linux, Windows e macOS, mas sua presença não comprova compatibilidade ou instalação validada em cada plataforma. A pasta `dist/` é gerada localmente e ignorada pelo Git; a pipeline atual não compila nem publica pacotes de distribuição. Pacotes Linux previamente commitados continuam acessíveis nos commits históricos, mas não devem ser tratados como builds verificados, assinados ou prontos para distribuição.
