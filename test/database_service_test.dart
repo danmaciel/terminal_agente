@@ -147,6 +147,46 @@ void main() {
     }
   });
 
+  test('Storage statistics are read-only and report UTF-8 payload bytes', () async {
+    final db = DatabaseService(recordTerminalHistory: true);
+    await db.init(inMemory: true);
+    try {
+      final empty = db.getStorageStatistics();
+      expect(empty['snapshots'], 0);
+      expect(empty['contentBlobBytes'], 0);
+      expect(empty['terminalLogBytes'], 0);
+      expect(empty['commandBytes'], 0);
+
+      final ws = db.upsertWorkspace('/tmp/storage_stats', isGitRepo: false);
+      db.saveFileBaseline(ws.id, 'test.txt', 'olá');
+      final session = db.createTerminalSession(
+        workspaceId: ws.id,
+        title: 'shell',
+        shellExecutable: '/bin/sh',
+      );
+      db.appendTerminalLog(session.id, 'ação');
+      db.recordCommand(session.id, 'echo oi');
+
+      final before = db.getStorageStatistics();
+      expect(before['workspaces'], 1);
+      expect(before['fileBaselines'], 1);
+      expect(before['contentBlobs'], 1);
+      expect(before['contentBlobBytes'], 4);
+      expect(before['terminalSessions'], 1);
+      expect(before['terminalLogs'], 1);
+      expect(before['terminalLogBytes'], 5);
+      expect(before['commands'], 1);
+      expect(before['commandBytes'], 7);
+
+      final after = db.getStorageStatistics();
+      expect(after, before);
+      expect(db.getFileBaselineContent(ws.id, 'test.txt'), 'olá');
+      expect(db.getCommandHistory(ws.id), ['echo oi']);
+    } finally {
+      db.dispose();
+    }
+  });
+
   test('Pruning removes only content blobs not used by any workspace', () async {
     final db = DatabaseService();
     await db.init(inMemory: true);
