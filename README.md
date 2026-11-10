@@ -13,14 +13,17 @@ Aplicação Desktop Multiplataforma (**Linux, Windows e macOS**) construída em 
 
 ---
 
-## Documentação das Fases de Desenvolvimento
+## Implementação e evidências
 
-* [Plano de Arquitetura e Implementação](implementation_plan.md)
-* [Fase 1 — Scaffolding e Estrutura Base](fase_1_scaffolding_e_estrutura_base.md)
-* [Fase 2 — Banco de Dados SQLite Local (CAS + Repositórios)](fase_2_banco_de_dados_sqlite.md)
-* [Fase 3 — Motor de Diff, Hunk Rollback e Hybrid Watcher](fase_3_motor_diff_rollback_e_watcher.md)
-* [Fase 4 — Terminal Multi-Abas e Snippets de Agentes](fase_4_terminal_multi_abas_e_agentes.md)
-* [Fase 5 — Interface de 3 Colunas e Empacotamento Standalone](fase_5_interface_3_colunas_e_empacotamento.md)
+Os componentes principais estão em `lib/services/` (persistência SQLite, diff, monitoramento de arquivos e sessões de terminal) e `lib/widgets/` (interface). Há testes de persistência, comparação e rollback, sessões e widgets em `test/`.
+
+O [workflow Flutter quality](.github/workflows/flutter.yml) executa `flutter analyze` e `flutter test` em pull requests e na branch principal. Esses testes não equivalem à validação completa da interface desktop, dos empacotadores ou do funcionamento em Linux, Windows e macOS.
+
+**Privacidade e operação local:** o aplicativo mantém comandos, saída de terminal e snapshots de arquivos em um banco SQLite local, sem criptografia própria ou mecanismo de expurgo automático demonstrado. Esses conteúdos podem incluir senhas, tokens, caminhos privados e dados de trabalho. Use apenas com projetos e comandos cujos dados possam ser armazenados localmente; não trate o histórico como cofre de segredos nem utilize a aplicação para executar comandos sensíveis sem avaliar esse risco. O terminal executa comandos no ambiente do usuário.
+
+**Rollback:** a reversão escreve alterações em arquivos locais. Faça backup ou use Git antes de reverter; os testes cobrem cenários específicos, não todas as condições de concorrência, conflitos e arquivos binários.
+
+**Distribuição:** existem scripts de empacotamento para os três sistemas operacionais, mas sua presença não comprova compatibilidade ou instalação validada em cada plataforma. Os arquivos existentes em `dist/` são artefatos históricos, não reproduzidos ou assinados pela pipeline de qualidade.
 
 ---
 
