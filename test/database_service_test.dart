@@ -147,4 +147,55 @@ void main() {
     }
   });
 
+  test('Pruning removes only content blobs not used by any workspace', () async {
+    final db = DatabaseService();
+    await db.init(inMemory: true);
+    try {
+      final first = db.upsertWorkspace('/tmp/cleanup_first', isGitRepo: false);
+      final second = db.upsertWorkspace('/tmp/cleanup_second', isGitRepo: false);
+
+      final unusedHash = db.storeBlob('temporary unreferenced secret');
+      final sharedHash = db.storeBlob('shared baseline');
+      final snapshotHash = db.storeBlob('snapshot retained');
+
+      db.saveFileBaseline(first.id, 'shared.txt', 'shared baseline');
+      db.saveFileBaseline(second.id, 'shared.txt', 'shared baseline');
+
+      final snapshot = db.createSnapshot(
+        workspaceId: first.id,
+        label: 'keep snapshot',
+        triggerType: 'manual',
+        changes: [
+          TrackedFileChange(
+            relativePath: 'file.txt',
+            status: FileChangeStatus.modified,
+            beforeContent: 'snapshot retained',
+            afterContent: 'snapshot updated',
+            addedLines: 1,
+            removedLines: 1,
+            updatedAt: DateTime.now(),
+          ),
+        ],
+      );
+      expect(db.getBlobContent(unusedHash), isNotEmpty);
+      expect(db.pruneUnreferencedContentBlobs(), 1);
+      expect(db.getBlobContent(unusedHash), isEmpty);
+      expect(db.getBlobContent(sharedHash), 'shared baseline');
+      expect(db.getBlobContent(snapshotHash), 'snapshot retained');
+      expect(db.getSnapshotFiles(snapshot.id), hasLength(1));
+
+      db.removeFileBaseline(first.id, 'shared.txt');
+      expect(db.pruneUnreferencedContentBlobs(), 0);
+      expect(db.getFileBaselineContent(second.id, 'shared.txt'), 'shared baseline');
+
+      db.removeFileBaseline(second.id, 'shared.txt');
+      expect(db.pruneUnreferencedContentBlobs(), 1);
+      expect(db.getBlobContent(sharedHash), isEmpty);
+      expect(db.getSnapshotFiles(snapshot.id).first.beforeContent, 'snapshot retained');
+      expect(db.pruneUnreferencedContentBlobs(), 0);
+    } finally {
+      db.dispose();
+    }
+  });
+
 }
