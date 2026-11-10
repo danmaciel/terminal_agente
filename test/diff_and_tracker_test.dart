@@ -59,6 +59,42 @@ line 6''';
     );
   });
 
+  test('Tracker excludes credential files from baselines and snapshots', () async {
+    final db = DatabaseService();
+    await db.init(inMemory: true);
+    final tracker = HybridChangeTracker(
+      databaseService: db,
+      diffEngine: DiffEngineService(),
+      enableWatcherAndGitCli: false,
+    );
+    final dir = await Directory.systemTemp.createTemp('terminal_secrets_');
+    try {
+      await File(p.join(dir.path, 'main.dart')).writeAsString('original');
+      for (final name in [
+        '.env', '.env.local', 'private.pem', 'client.key',
+        'id_ed25519', '.npmrc', 'credentials', 'release.p12',
+      ]) {
+        await File(p.join(dir.path, name)).writeAsString('secret');
+      }
+      final ws = await tracker.openWorkspace(dir.path);
+      expect(db.getAllBaselineContents(ws.id).keys, ['main.dart']);
+      await File(p.join(dir.path, 'main.dart')).writeAsString('updated');
+      await File(p.join(dir.path, '.env')).writeAsString('new secret');
+      final changes = await tracker.refreshChanges(recordAutoSnapshot: true);
+      expect(changes.map((c) => c.relativePath), ['main.dart']);
+      final snapshots = db.getSnapshotsForWorkspace(ws.id);
+      expect(snapshots, hasLength(1));
+      expect(
+        db.getSnapshotFiles(snapshots.single.id).map((f) => f.relativePath),
+        ['main.dart'],
+      );
+    } finally {
+      await tracker.dispose();
+      db.dispose();
+      await dir.delete(recursive: true);
+    }
+  });
+
   test('HybridChangeTracker tracks changes, creates snapshots, and performs hunk/file rollback', () async {
     final db = DatabaseService();
     await db.init(inMemory: true);
